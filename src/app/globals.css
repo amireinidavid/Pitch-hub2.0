@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 13%; /* Dark gray background */
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 15%; /* Slightly lighter gray for cards */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 0 0% 17%; /* Medium gray for secondary elements */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 63.9%;
+
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%; /* Darker gray for borders */
+    --input: 0 0% 20%;
+    --ring: 0 0% 83.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 0 0% 13%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+
+    --secondary: 0 0% 17%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 17%;
+    --muted-foreground: 0 0% 63.9%;
+
+    --accent: 0 0% 17%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Additional custom styles */
+.navigation-menu-trigger {
+  background: transparent;
+  padding: 0;
+  font-weight: normal;
+}
+
+.navigation-menu-trigger:hover {
+  background: transparent;
+}
+
+/* Assuming you have a CSS or SCSS file where global styles are defined */
+.app-container {
+  display: flex;
+  min-height: 100vh; /* Full viewport height */
+  background-color: #1a202c; /* Dark background, adjust color as needed */
+}
+
+.sidebar {
+  width: 250px; /* Adjust width as needed */
+  flex-shrink: 0; /* Prevents the sidebar from shrinking */
+  height: 100vh; /* Full viewport height */
+  background-color: #2d3748; /* Sidebar background, adjust color as needed */
+}
+
+.main-content {
+  flex-grow: 1; /* Takes up remaining space */
+  padding: 20px; /* Adjust padding as needed */
+  overflow-y: auto; /* Allows scrolling within the main content area */
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #1e293b;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera when not needed */
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Show scrollbar on hover and when scrolling */
+.custom-scrollbar:hover::-webkit-scrollbar {
+  display: block;
+}
+
+/* Apply to sidebar nav as well */
+nav::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+nav::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+nav::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.8);
+}
+
+nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) rgba(0, 0, 0, 0.1);
+}
+@layer utilities {
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* For Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+/* Dark mode styles */
+@media (prefers-color-scheme: dark) {
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  .custom-scrollbar {
+    scrollbar-color: #475569 transparent;
+  }
+}
+
+/* Hide scrollbar when not hovering (optional) */
+.custom-scrollbar:not(:hover)::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.custom-scrollbar:not(:hover) {
+  scrollbar-color: transparent transparent;
+}
+
+/* src/styles/global.css */
+.table-row:hover {
+  background-color: rgba(229, 231, 235, 0.5); /* Light gray on hover */
+}
+
+.modal {
+  /* Add custom modal styles */
+}
