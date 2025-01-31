@@ -2756,28 +2756,67 @@ export async function reviewInvestmentAction(investmentId, reviewData) {
 }
 
 // Admin review of investment
-export async function adminReviewInvestmentAction(investmentId, { status, feedback }) {
+
+export async function adminReviewInvestmentAction(pitchId, investmentId, { status, feedback }) {
   try {
     await connectToDB();
 
-    const investment = await Investment.findByIdAndUpdate(
-      investmentId,
-      { status, feedback },
+    // Update investment status within the pitch
+    const pitch = await Pitch.findOneAndUpdate(
+      { 
+        _id: pitchId,
+        'investments._id': investmentId 
+      },
+      { 
+        $set: { 
+          'investments.$.status': 'payment_pending',
+          'investments.$.reviewNotes': feedback,
+          'investments.$.reviewedAt': new Date()
+        } 
+      },
       { new: true }
-    ).populate('investorId');
+    );
 
-    // Create notification for investor
+    const investment = pitch.investments.find(inv => inv._id.toString() === investmentId);
+
+    if (!investment) {
+      throw new Error('Investment not found');
+    }
+
+    // Create detailed notification
     await Notification.create({
-      userId: investment.investorId._id,
-      title: `Investment ${status === 'approved' ? 'Approved' : 'Rejected'}`,
-      message: feedback || `Your investment has been ${status === 'approved' ? 'approved' : 'rejected'}`,
+      userId: investment.investorId, // Clerk user ID is now accepted as string
+      title: 'Investment Approved - Payment Required',
+      message: `
+Dear Investor,
+
+Your investment application for "${pitch.title}" has been approved! 
+
+${feedback ? `Admin Feedback: ${feedback}
+
+` : ''}
+Next Steps:
+1. Please proceed with the payment of $${investment.amount.toLocaleString()}
+2. Use the payment method you selected (${investment.paymentMethod})
+3. Once payment is confirmed, your investment will be finalized
+
+Important Details:
+- Investment Amount: $${investment.amount.toLocaleString()}
+- Investment Type: ${investment.investmentType}
+- Payment Method: ${investment.paymentMethod}
+
+If you have any questions about the payment process, please don't hesitate to contact our support team.
+
+Click below to proceed with payment.
+      `,
       type: 'investment',
-      link: `/dashboard/investments/${investmentId}`
+      link: `/dashboard/investments/${pitchId}/${investmentId}/payment`,
+      priority: 'high'
     });
 
     return {
       success: true,
-      message: 'Review submitted successfully'
+      message: 'Investment reviewed successfully'
     };
 
   } catch (error) {
@@ -2788,7 +2827,6 @@ export async function adminReviewInvestmentAction(investmentId, { status, feedba
     };
   }
 }
-
 // Investment notification function
 async function sendInvestmentNotifications(investment, pitch) {
   try {
@@ -3611,6 +3649,69 @@ export async function fetchPendingInvestments() {
       success: false,
       error: error.message,
       investments: []
+    };
+  }
+}
+
+// Add this new action to fetch notifications
+export async function fetchUserNotificationsAction(userId, userRole) {
+  try {
+    await connectToDB();
+    
+    // Base query to find notifications for the user
+    const baseQuery = { userId };
+
+    // Add type filters based on user role
+    if (userRole === 'investor') {
+      // Investors should only see investment-related notifications
+      baseQuery.type = {
+        $in: [
+          'investment_submitted',
+          'investment_approved',
+          'investment_rejected',
+          'payment_pending',
+          'payment_confirmed'
+        ]
+      };
+    } else if (userRole === 'pitcher') {
+      // Pitchers should see pitch and investment notifications for their pitches
+      baseQuery.type = {
+        $in: [
+          'new_investment',
+          'pitch_review',
+          'pitch_approved',
+          'pitch_rejected',
+          'investment_completed'
+        ]
+      };
+    } else if (userRole === 'admin') {
+      // Admins see all types of notifications
+      baseQuery.type = {
+        $in: [
+          'investment_review',
+          'pitch_review',
+          'new_pitch',
+          'reported_content',
+          'system_alert'
+        ]
+      };
+    }
+
+    const notifications = await Notification.find(baseQuery)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return {
+      success: true,
+      notifications: JSON.parse(JSON.stringify(notifications))
+    };
+
+  } catch (error) {
+    console.error("Fetch notifications error:", error);
+    return {
+      success: false,
+      error: error.message,
+      notifications: []
     };
   }
 }

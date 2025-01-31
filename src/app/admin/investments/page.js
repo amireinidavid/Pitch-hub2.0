@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  BarChart3,
   DollarSign,
   Clock,
   CheckCircle,
@@ -17,10 +18,6 @@ import {
   Calendar,
   ArrowRight,
   MessageSquare,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   AlertTriangle,
   Briefcase,
   Building,
@@ -40,10 +37,19 @@ import {
   TrendingUp,
   UserCheck,
   Wallet,
+  Activity,
+  Users
 } from "lucide-react";
 import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function AdminInvestments() {
@@ -51,8 +57,8 @@ export default function AdminInvestments() {
   const [selectedInvestment, setSelectedInvestment] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const { toast } = useToast();
 console.log(investments, "Investments");
+const { toast } = useToast();
 
   useEffect(() => {
     loadInvestments();
@@ -68,10 +74,14 @@ console.log(investments, "Investments");
   async function handleReview(status) {
     if (!selectedInvestment) return;
     
-    const result = await adminReviewInvestmentAction(selectedInvestment._id, {
-      status,
-      feedback
-    });
+    const result = await adminReviewInvestmentAction(
+      selectedInvestment.pitchId._id,
+      selectedInvestment._id,
+      {
+        status,
+        feedback
+      }
+    );
 
     if (result.success) {
       toast({
@@ -86,7 +96,7 @@ console.log(investments, "Investments");
     } else {
       toast({
         title: "Error!",
-        description: "Failed to get investment",
+        description: result.error || "Failed to review investment",
         variant: "error"
       })
     }
