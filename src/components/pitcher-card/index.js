@@ -160,7 +160,7 @@ function PitcherCard({ profileInfo, pitchItem, pitchApplications, viewMode }) {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mt-6">
-              <Link href={`/pitching/pitch/${pitchItem._id}`} className="flex-1">
+              <Link href={`/pitching/${pitchItem._id}`} className="flex-1">
                 <Button 
                   className="w-full bg-primary hover:bg-primary/90 text-white"
                   size="lg"
