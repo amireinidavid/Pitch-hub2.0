@@ -25,6 +25,20 @@ export async function createProfileAction(data) {
       throw new Error("Missing required fields: userId and role");
     }
 
+    // Check if a profile already exists for this user
+    const existingProfile = await Profile.findOne({ userId: data.userId });
+    
+    // If profile exists, return error to prevent duplicate profiles
+    if (existingProfile) {
+      return {
+        success: false,
+        error: "Profile already exists",
+        redirectTo: existingProfile.role === "pitcher" 
+          ? "/pitching/dashboard" 
+          : "/investing/dashboard"
+      };
+    }
+
     // Validate and format the incoming data
     const profileData = {
       userId: data.userId,
@@ -164,12 +178,16 @@ export async function createProfileAction(data) {
     return {
       success: true,
       profile: JSON.parse(JSON.stringify(profile)),
+      redirectTo: data.role === "pitcher" 
+        ? "/pitching/dashboard" 
+        : "/investing/dashboard"
     };
   } catch (error) {
     console.error("Profile creation error:", error);
     return {
       success: false,
       error: error.message || "Failed to create profile",
+      redirectTo: "/"
     };
   }
 }

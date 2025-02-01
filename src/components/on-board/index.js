@@ -1699,7 +1699,6 @@ export default function OnBoard() {
       }
 
       const result = await createProfileAction(formattedData);
-
       if (result.success) {
         setShowSuccessAnimation(true);
         toast({
@@ -1707,20 +1706,25 @@ export default function OnBoard() {
           description: "Your profile has been created successfully.",
           variant: "success",
         });
-
-        // Redirect based on user role
+  
+        // Use the redirectTo from the result
         setTimeout(() => {
-          if (formData.role === "pitcher") {
-            router.push("/pitching/dashboard");
-          } else if (formData.role === "investor") {
-            router.push("/investing/dashboard");
-          } else {
-            // Default fallback for other roles
-            router.push("/");
-          }
+          router.push(result.redirectTo);
         }, 2000);
       } else {
-        throw new Error(result.error || "Failed to create profile");
+        if (result.redirectTo) {
+          // If profile exists, redirect to appropriate dashboard
+          toast({
+            title: "Profile Exists",
+            description: "You already have a profile. Redirecting to dashboard...",
+            variant: "info",
+          });
+          setTimeout(() => {
+            router.push(result.redirectTo);
+          }, 2000);
+        } else {
+          throw new Error(result.error || "Failed to create profile");
+        }
       }
     } catch (error) {
       console.error("Profile creation error:", error);
