@@ -11,6 +11,7 @@ import {
   TrendingUp,
   DollarSign,
   Sparkles,
+  Plus,
 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -27,9 +28,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-function PitcherCard({ pitchItem, pitchApplications, isLoading }) {
+function PitcherCard({ pitchList, isLoading }) {
   const [isHovered, setIsHovered] = useState(false);
-console.log(pitchItem, "pitchItem");
 
   const getStatusColor = (status) => {
     const colors = {
@@ -42,31 +42,55 @@ console.log(pitchItem, "pitchItem");
   };
 
   if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  if (!pitchList || pitchList.length === 0) {
     return (
-      <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-lg shadow-lg">
-        <CardHeader className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-9 w-9 rounded-full" />
-          </div>
-          <Skeleton className="h-6 w-3/4" />
-          <Skeleton className="h-16 w-full" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-16" />
-            <Skeleton className="h-6 w-16" />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Skeleton className="h-10 w-full" />
-        </CardFooter>
-      </Card>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-lg shadow-lg p-8 text-center">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring" }}
+            className="mb-6"
+          >
+            <Sparkles className="h-16 w-16 text-primary mx-auto" />
+          </motion.div>
+          
+          <h3 className="text-2xl font-bold mb-4">Create Your First Pitch</h3>
+          <p className="text-gray-400 mb-8">
+            Start your journey by creating your first pitch. Share your vision and connect with potential investors.
+          </p>
+
+          <Link href="/pitching/create">
+            <Button 
+              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white"
+              size="lg"
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Create Your First Pitch
+            </Button>
+          </Link>
+
+          {/* Decorative elements */}
+          <motion.div
+            className="absolute inset-0 pointer-events-none"
+            animate={{
+              background: [
+                "radial-gradient(circle at 50% 50%, rgba(var(--primary-rgb), 0.1) 0%, transparent 50%)",
+                "radial-gradient(circle at 50% 50%, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%)",
+                "radial-gradient(circle at 50% 50%, rgba(var(--primary-rgb), 0.1) 0%, transparent 50%)",
+              ],
+            }}
+            transition={{ duration: 4, repeat: Infinity }}
+          />
+        </Card>
+      </motion.div>
     );
   }
 
@@ -78,7 +102,7 @@ console.log(pitchItem, "pitchItem");
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
     >
-      <Link href={`/pitching/${pitchItem._id}`}>
+      <Link href={`/pitching/${pitchList[0]._id}`}>
         <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-lg shadow-lg hover:shadow-xl transition-all duration-300">
           {/* Animated Gradient Background */}
           <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-secondary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -106,24 +130,24 @@ console.log(pitchItem, "pitchItem");
               >
                 <Badge
                   variant="outline"
-                  className={`${getStatusColor(pitchItem.status)}`}
+                  className={`${getStatusColor(pitchList[0].status)}`}
                 >
-                  {pitchItem.status?.charAt(0).toUpperCase() +
-                    pitchItem.status?.slice(1)}
+                  {pitchList[0].status?.charAt(0).toUpperCase() +
+                    pitchList[0].status?.slice(1)}
                 </Badge>
               </motion.div>
               <Avatar className="h-9 w-9 ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40">
-                <AvatarImage src={pitchItem.image} alt={pitchItem.title} />
+                <AvatarImage src={pitchList[0].image} alt={pitchList[0].title} />
                 <AvatarFallback>
-                  {pitchItem.title?.slice(0, 2).toUpperCase()}
+                  {pitchList[0].title?.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </div>
             <CardTitle className="text-xl font-bold line-clamp-1 group-hover:text-primary transition-colors duration-300">
-              {pitchItem.title}
+              {pitchList[0].title}
             </CardTitle>
             <CardDescription className="line-clamp-2">
-              {pitchItem.tagline}
+              {pitchList[0].tagline}
             </CardDescription>
           </CardHeader>
 
@@ -137,8 +161,8 @@ console.log(pitchItem, "pitchItem");
                 <Users className="h-4 w-4 text-primary" />
                 <span>
                   {
-                    pitchApplications.filter(
-                      (item) => item.pitchID === pitchItem?._id
+                    pitchList.filter(
+                      (item) => item.pitchID === pitchList[0]?._id
                     ).length
                   }{" "}
                   Investors
@@ -150,7 +174,7 @@ console.log(pitchItem, "pitchItem");
               >
                 <Calendar className="h-4 w-4 text-primary" />
                 <span>
-                  {format(new Date(pitchItem.createdAt), "MMM d, yyyy")}
+                  {format(new Date(pitchList[0].createdAt), "MMM d, yyyy")}
                 </span>
               </motion.div>
               <motion.div
@@ -158,20 +182,20 @@ console.log(pitchItem, "pitchItem");
                 whileHover={{ scale: 1.05 }}
               >
                 <Target className="h-4 w-4 text-primary" />
-                <span>{pitchItem.industry || "Technology"}</span>
+                <span>{pitchList[0].industry || "Technology"}</span>
               </motion.div>
               <motion.div
                 className="flex items-center gap-2"
                 whileHover={{ scale: 1.05 }}
               >
                 <DollarSign className="h-4 w-4 text-primary" />
-                <span>{pitchItem.fundingGoal || "Seed Round"}</span>
+                <span>{pitchList[0].fundingGoal || "Seed Round"}</span>
               </motion.div>
             </div>
 
             {/* Animated Tags */}
             <div className="flex flex-wrap gap-2">
-              {pitchItem.tags?.slice(0, 3).map((tag, index) => (
+              {pitchList[0].tags?.slice(0, 3).map((tag, index) => (
                 <motion.div
                   key={index}
                   whileHover={{ scale: 1.1 }}

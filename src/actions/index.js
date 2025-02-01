@@ -431,16 +431,28 @@ export async function fetchTotalInvestors() {
   return JSON.parse(JSON.stringify(investors));
 }
 // Pitch created by my ai buddy
-export async function fetchPitchesAction() {
+export async function fetchPitchesAction(userId, role) {
   try {
     await connectToDB();
 
-    const pitches = await Pitch.find({})
+    // If user is a pitcher, only fetch their pitches
+    if (role === 'pitcher') {
+      const pitches = await Pitch.find({ creator: userId })
+        .populate("creator")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return JSON.parse(JSON.stringify(pitches));
+    }
+
+    // If user is an investor or admin, fetch all active pitches
+    const pitches = await Pitch.find({ 
+      status: { $in: ['active', 'pending'] } 
+    })
       .populate("creator")
       .sort({ createdAt: -1 })
       .lean();
 
-    // Ensure the data is serializable
     return JSON.parse(JSON.stringify(pitches));
   } catch (error) {
     console.error("Error fetching pitches:", error);
@@ -2034,6 +2046,12 @@ export async function fetchPitchInvestmentsAction(pitchId) {
     console.error("Fetch investments error:", error);
     return { success: false, error: error.message };
   }
+}
+
+export async function  fetchInvestorInvestments(){
+try{} catch(error){
+  
+}
 }
 
 // Fetch investor's investments
