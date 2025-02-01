@@ -434,12 +434,26 @@ export async function fetchTotalInvestors() {
 export async function fetchPitchesAction(userId, role) {
   try {
     await connectToDB();
+    console.log('Fetching pitches with:', { userId, role }); // Debug log
 
+    if (!userId || !role) {
+      console.log('Missing userId or role:', { userId, role });
+      return [];
+    }
+
+    let query = {};
+    
     // If user is a pitcher, fetch only their pitches
     if (role === 'pitcher') {
-      const pitches = await Pitch.find({ 
-        creator: userId  // This should match the Profile _id, not the userId
-      })
+      query = { creator: userId };
+      console.log('Pitcher query:', query); // Debug log
+    } else if (role === 'investor') {
+      // If user is an investor, fetch all active pitches
+      query = { status: { $in: ['active', 'pending'] } };
+      console.log('Investor query:', query); // Debug log
+    }
+
+    const pitches = await Pitch.find(query)
       .populate({
         path: "creator",
         model: "Profile",
@@ -448,26 +462,12 @@ export async function fetchPitchesAction(userId, role) {
       .sort({ createdAt: -1 })
       .lean();
 
-      console.log('Fetched pitches:', pitches); // Debug log
-      return JSON.parse(JSON.stringify(pitches));
-    }
-
-    // If user is an investor, fetch all active pitches
-    const pitches = await Pitch.find({ 
-      status: { $in: ['active', 'pending'] } 
-    })
-    .populate({
-      path: "creator",
-      model: "Profile",
-      select: "name email profileImage"
-    })
-    .sort({ createdAt: -1 })
-    .lean();
-
+    console.log('Found pitches:', pitches); // Debug log
     return JSON.parse(JSON.stringify(pitches));
+
   } catch (error) {
-    console.error("Error fetching pitches:", error);
-    return []; // Return empty array instead of throwing error
+    console.error("Error in fetchPitchesAction:", error);
+    return [];
   }
 }
 
