@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function PitcherCard({ pitchList, isLoading }) {
   const [isHovered, setIsHovered] = useState(false);
+console.log(pitchList, "pitchList");
 
   const getStatusColor = (status) => {
     const colors = {

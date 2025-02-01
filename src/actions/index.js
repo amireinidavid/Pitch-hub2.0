@@ -437,11 +437,18 @@ export async function fetchPitchesAction(userId, role) {
 
     // If user is a pitcher, fetch only their pitches
     if (role === 'pitcher') {
-      const pitches = await Pitch.find({ creator: userId })
-        .populate("creator")
-        .sort({ createdAt: -1 })
-        .lean();
+      const pitches = await Pitch.find({ 
+        creator: userId  // This should match the Profile _id, not the userId
+      })
+      .populate({
+        path: "creator",
+        model: "Profile",
+        select: "name email profileImage"
+      })
+      .sort({ createdAt: -1 })
+      .lean();
 
+      console.log('Fetched pitches:', pitches); // Debug log
       return JSON.parse(JSON.stringify(pitches));
     }
 
@@ -449,9 +456,13 @@ export async function fetchPitchesAction(userId, role) {
     const pitches = await Pitch.find({ 
       status: { $in: ['active', 'pending'] } 
     })
-      .populate("creator")
-      .sort({ createdAt: -1 })
-      .lean();
+    .populate({
+      path: "creator",
+      model: "Profile",
+      select: "name email profileImage"
+    })
+    .sort({ createdAt: -1 })
+    .lean();
 
     return JSON.parse(JSON.stringify(pitches));
   } catch (error) {

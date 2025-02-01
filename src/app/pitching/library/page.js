@@ -7,9 +7,16 @@ async function PitchingLibrary() {
   const user = await currentUser();
   const profileInfo = await fetchProfileAction(user?.id);
 
-  // Fetch pitches specific to the user's role
-  const pitchList = await fetchPitchesAction(profileInfo?._id, profileInfo?.role);
+  if (!profileInfo) {
+    return <div>Loading...</div>;
+  }
+
+  // Pass the profile._id (not userId) to fetch pitches
+  const pitchList = await fetchPitchesAction(profileInfo._id, profileInfo.role);
   
+  console.log('Profile Info:', profileInfo); // Debug log
+  console.log('Pitch List:', pitchList); // Debug log
+
   // Only create filter categories if there are pitches
   const filterCategory = pitchList.length > 0 
     ? ["industry", "stage", "location", "fundingRange", "investmentType"]
