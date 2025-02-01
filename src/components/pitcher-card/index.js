@@ -123,7 +123,7 @@ function PitcherCard({ profileInfo, pitchItem, pitchApplications, viewMode }) {
                   <span className="text-sm font-medium">Funding Goal</span>
                 </div>
                 <p className="text-lg font-bold">
-                  ${(pitchItem.fundingDetails?.currentRound?.targetAmount || 0).toLocaleString()}
+                  ${(pitchItem?.financials?.fundingGoal || 0).toLocaleString()}
                 </p>
               </div>
 
