@@ -95,143 +95,44 @@ function PitcherCard({ pitchList, isLoading }) {
   }
 
   return (
-    <motion.div
-      whileHover={{ y: -5, scale: 1.02 }}
-      transition={{ duration: 0.2 }}
-      className="group"
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-    >
-      <Link href={`/pitching/${pitchList[0]._id}`}>
-        <Card className="relative overflow-hidden border-0 bg-white/5 backdrop-blur-lg shadow-lg hover:shadow-xl transition-all duration-300">
-          {/* Animated Gradient Background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-secondary/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-          {/* Sparkle Effects */}
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 pointer-events-none"
-              >
-                <Sparkles className="absolute top-2 right-2 h-4 w-4 text-primary animate-pulse" />
-                <Sparkles className="absolute bottom-2 left-2 h-4 w-4 text-primary animate-pulse delay-100" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-between">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                transition={{ type: "spring", stiffness: 400, damping: 10 }}
-              >
-                <Badge
-                  variant="outline"
-                  className={`${getStatusColor(pitchList[0].status)}`}
-                >
-                  {pitchList[0].status?.charAt(0).toUpperCase() +
-                    pitchList[0].status?.slice(1)}
-                </Badge>
-              </motion.div>
-              <Avatar className="h-9 w-9 ring-2 ring-primary/20 transition-all duration-300 group-hover:ring-primary/40">
-                <AvatarImage src={pitchList[0].image} alt={pitchList[0].title} />
-                <AvatarFallback>
-                  {pitchList[0].title?.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+    <div className="grid gap-6">
+      {pitchList.map((pitch) => (
+        <Card key={pitch._id} className="p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">{pitch.title}</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{pitch.tagline}</p>
+              <div className="flex gap-2 mb-4">
+                <Badge>{pitch.industry}</Badge>
+                <Badge>{pitch.companyDetails?.stage}</Badge>
+                <Badge className={getStatusColor(pitch.status)}>{pitch.status}</Badge>
+              </div>
             </div>
-            <CardTitle className="text-xl font-bold line-clamp-1 group-hover:text-primary transition-colors duration-300">
-              {pitchList[0].title}
-            </CardTitle>
-            <CardDescription className="line-clamp-2">
-              {pitchList[0].tagline}
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            {/* Enhanced Stats Grid */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <motion.div
-                className="flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-              >
-                <Users className="h-4 w-4 text-primary" />
-                <span>
-                  {
-                    pitchList.filter(
-                      (item) => item.pitchID === pitchList[0]?._id
-                    ).length
-                  }{" "}
-                  Investors
-                </span>
-              </motion.div>
-              <motion.div
-                className="flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-              >
-                <Calendar className="h-4 w-4 text-primary" />
-                <span>
-                  {format(new Date(pitchList[0].createdAt), "MMM d, yyyy")}
-                </span>
-              </motion.div>
-              <motion.div
-                className="flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-              >
-                <Target className="h-4 w-4 text-primary" />
-                <span>{pitchList[0].industry || "Technology"}</span>
-              </motion.div>
-              <motion.div
-                className="flex items-center gap-2"
-                whileHover={{ scale: 1.05 }}
-              >
-                <DollarSign className="h-4 w-4 text-primary" />
-                <span>{pitchList[0].fundingGoal || "Seed Round"}</span>
-              </motion.div>
-            </div>
-
-            {/* Animated Tags */}
-            <div className="flex flex-wrap gap-2">
-              {pitchList[0].tags?.slice(0, 3).map((tag, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ scale: 1.1 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                >
-                  <Badge
-                    variant="secondary"
-                    className="text-xs bg-primary/10 hover:bg-primary/20 transition-colors duration-300"
-                  >
-                    {tag}
-                  </Badge>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-
-          <CardFooter>
-            <Button
-              className="w-full group relative overflow-hidden"
-              variant="default"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2 group-hover:text-white transition-colors duration-300">
+            <Link href={`/pitching/pitch/${pitch._id}`}>
+              <Button variant="outline" size="sm">
                 View Details
-                <ArrowUpRight className="h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
-              </span>
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                initial={false}
-                animate={isHovered ? { scale: 1.2 } : { scale: 1 }}
-                transition={{ duration: 0.3 }}
-              />
-            </Button>
-          </CardFooter>
+                <ArrowUpRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">Goal: ${pitch.fundingGoal}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">Created: {format(new Date(pitch.createdAt), 'MMM d, yyyy')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">Investors: {pitch.investments?.length || 0}</span>
+            </div>
+          </div>
         </Card>
-      </Link>
-    </motion.div>
+      ))}
+    </div>
   );
 }
 

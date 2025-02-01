@@ -435,7 +435,7 @@ export async function fetchPitchesAction(userId, role) {
   try {
     await connectToDB();
 
-    // If user is a pitcher, only fetch their pitches
+    // If user is a pitcher, fetch only their pitches
     if (role === 'pitcher') {
       const pitches = await Pitch.find({ creator: userId })
         .populate("creator")
@@ -445,7 +445,7 @@ export async function fetchPitchesAction(userId, role) {
       return JSON.parse(JSON.stringify(pitches));
     }
 
-    // If user is an investor or admin, fetch all active pitches
+    // If user is an investor, fetch all active pitches
     const pitches = await Pitch.find({ 
       status: { $in: ['active', 'pending'] } 
     })
@@ -456,7 +456,7 @@ export async function fetchPitchesAction(userId, role) {
     return JSON.parse(JSON.stringify(pitches));
   } catch (error) {
     console.error("Error fetching pitches:", error);
-    throw new Error("Failed to fetch pitches");
+    return []; // Return empty array instead of throwing error
   }
 }
 
