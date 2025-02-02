@@ -739,15 +739,31 @@ export async function createPitchAction(formData) {
 
       // Media & Documents
       media: {
+        logo: formData.media?.logo || "", // Added logo field
         pitchDeck: formData.media?.pitchDeck || "",
+        video: formData.media?.video || "", // Changed from videos array to single video
         documents: Array.isArray(formData.media?.documents)
-          ? formData.media.documents
+          ? formData.media.documents.map(doc => ({
+              title: doc.title || "",
+              type: doc.type || "",
+              url: doc.url || "",
+              description: doc.description || "",
+              uploadDate: doc.uploadDate || new Date(),
+            }))
           : [],
         images: Array.isArray(formData.media?.images)
-          ? formData.media.images
+          ? formData.media.images.map(img => ({
+              url: img.url || "",
+              caption: img.caption || "",
+            }))
           : [],
-        videos: Array.isArray(formData.media?.videos)
-          ? formData.media.videos
+        slides: Array.isArray(formData.media?.slides)
+          ? formData.media.slides.map(slide => ({
+              url: slide.url || "",
+              order: slide.order || 0,
+              title: slide.title || "",
+              description: slide.description || "",
+            }))
           : [],
       },
 
