@@ -32,6 +32,7 @@ import { uploadFileAction } from "@/actions";
 
 const formSchema = z.object({
   media: z.object({
+    logo: z.string().url().optional(),
     pitchDeck: z.string().url().optional(),
     video: z.string().url().optional(),
     images: z.array(
@@ -99,9 +100,17 @@ function MediaDocs({ data, updateData }) {
       setUploading(true);
       setUploadProgress(0);
 
+      const fileTypeMap = {
+        'image': 'PITCH_IMAGES',
+        'video': 'PITCH_VIDEOS',
+        'document': 'PITCH_DOCUMENTS',
+        'slide': 'PITCH_SLIDES',
+        'audio': 'PITCH_AUDIO'
+      };
+
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("fileType", type);
+      formData.append("fileType", fileTypeMap[type] || 'PITCH_DOCUMENTS');
 
       const result = await uploadFileAction(formData);
 
@@ -225,10 +234,48 @@ function MediaDocs({ data, updateData }) {
         <div>
           <h2 className="text-lg font-semibold mb-4">Media & Documents</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Upload and manage your pitch deck, images, videos, and other
+            Upload and manage your pitch deck, logo, images, videos, and other
             supporting documents.
           </p>
         </div>
+
+        {/* Company Logo */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-2"
+        >
+          <FormField
+            control={form.control}
+            name="media.logo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Company Logo</FormLabel>
+                <FormControl>
+                  <div className="space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, field, "image")}
+                    />
+                    {field.value && (
+                      <div className="mt-2">
+                        <Image
+                          src={field.value}
+                          alt="Company Logo"
+                          width={100}
+                          height={100}
+                          className="rounded-md object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </motion.div>
 
         {/* Pitch Deck */}
         <motion.div
@@ -346,7 +393,7 @@ function MediaDocs({ data, updateData }) {
                             type="file"
                             accept="image/*"
                             onChange={(e) =>
-                              handleFileUpload(e, field, "image")
+                              handleFileUpload(e, field, "slide")
                             }
                           />
                         </FormControl>

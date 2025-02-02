@@ -248,26 +248,31 @@ const pitchSchema = new mongoose.Schema(
 
     // Media & Documents
     media: {
+      logo: String,
       pitchDeck: String,
+      video: String,
       documents: [
         {
           title: String,
           type: String,
           url: String,
+          description: String,
           uploadDate: Date,
-        },
+        }
       ],
       images: [
         {
           url: String,
           caption: String,
-        },
+        }
       ],
-      videos: [
+      slides: [
         {
           url: String,
+          order: Number,
           title: String,
-        },
+          description: String,
+        }
       ],
     },
 
@@ -370,250 +375,247 @@ const pitchSchema = new mongoose.Schema(
       },
     ],
 
-
-
-// Investment & Funding Details
-investments: [{
-  investmentId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Investment",
-    required: true
-  },
-  investorId: {
-    type: String, // Clerk user ID
-    required: true
-  },
-  // Investment Details
-  amount: {
-    type: Number,
-    required: true
-  },
-  investmentType: {
-    type: String,
-    enum: ["equity", "convertible", "safe", "debt"],
-    required: true
-  },
-  investmentStructure: {
-    type: String,
-    enum: ["direct", "spv"],
-    required: true
-  },
-  paymentMethod: {
-    type: String,
-    enum: ["wire", "crypto", "escrow"],
-    required: true
-  },
-  status: {
-    type: String,
-    enum: [
-      "pending",
-      "pitcher_review",
-      "admin_review",
-      "payment_pending",
-      "payment_processing",
-      "completed",
-      "rejected",
-      "cancelled"
-    ],
-    default: "pending"
-  },
-  paymentDetails: {
-    stripeSessionId: String,
-    paymentStatus: String,
-    paymentDate: Date,
-    transactionId: String
-  },
-
-  // Investment Strategy
-  investmentThesis: {
-    type: String,
-    required: true
-  },
-  expectedHoldingPeriod: {
-    type: String,
-    enum: ["1-2", "3-5", "5-7", "7+"],
-    required: true
-  },
-  exitStrategy: {
-    type: String,
-    enum: ["ipo", "acquisition", "secondary", "buyback"],
-    required: true
-  },
-  valueAddProposal: String,
-
-  // Risk Assessment
-  riskTolerance: {
-    type: String,
-    enum: ["conservative", "moderate", "aggressive"],
-    required: true
-  },
-  keyRiskFactors: [String],
-  mitigationStrategies: String,
-
-  // Due Diligence
-  dueDiligence: {
-    businessModel: Boolean,
-    financials: Boolean,
-    market: Boolean,
-    team: Boolean,
-    legal: Boolean,
-    technology: Boolean,
-    competition: Boolean,
-    intellectualProperty: Boolean,
-    regulatory: Boolean,
-    customerBase: Boolean,
-    growthStrategy: Boolean,
-    operationalEfficiency: Boolean
-  },
-
-  // Investor Profile
-  investorProfile: {
-    investmentExperience: {
-      type: String,
-      enum: ["novice", "intermediate", "experienced", "expert"],
-      required: true
-    },
-    sectorExpertise: String,
-    accreditationStatus: {
-      type: String,
-      enum: ["accredited", "qualified", "institutional", "non-accredited"],
-      required: true
-    },
-    investmentGoals: String
-  },
-
-  // Terms and Additional Info
-  terms: String,
-  additionalRequests: String,
-  boardSeatInterest: Boolean,
-  strategicPartnership: Boolean,
-
-  // Compliance
-  sourceOfFunds: {
-    type: String,
-    enum: ["personal", "business", "investment", "inheritance", "other"],
-    required: true
-  },
-  kycCompleted: {
-    type: Boolean,
-    default: false
-  },
-  kycDocuments: [String],
-  accreditationVerified: {
-    type: Boolean,
-    default: false
-  },
-
-  // Timestamps
-  submittedAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  },
-  completedAt: Date,
-
-  equity: {
-    type: Number,
-    required: function() {
-      return this.parent().investmentType === "equity";
-    },
-    validate: {
-      validator: function(value) {
-        if (this.parent().investmentType === "equity") {
-          return value != null && value > 0;
-        }
-        return true;
+    // Investment & Funding Details
+    investments: [{
+      investmentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Investment",
+        required: true
       },
-      message: "Equity percentage is required for equity investments and must be greater than 0"
-    }
-  }
-}],
-fundingDetails: {
-  totalFundingRaised: {
-    type: Number,
-    default: 0
-  },
-  numberOfInvestors: {
-    type: Number,
-    default: 0
-  },
-  fundingRounds: [{
-    roundName: String,
-    roundType: {
-      type: String,
-      enum: ["pre_seed", "seed", "series_a", "series_b", "series_c", "bridge", "growth"]
-    },
-    targetAmount: Number,
-    amount: Number,
-    preMoneyValuation: Number,
-    postMoneyValuation: Number,
-    date: Date,
-    leadInvestor: String,
-    investors: [{
-      investorId: String,
-      amount: Number,
-      equity: Number
-    }],
-    terms: {
-      sharePrice: Number,
-      sharesIssued: Number,
-      proRataRights: Boolean,
-      votingRights: Boolean
-    },
-    status: {
-      type: String,
-      enum: ["planned", "ongoing", "completed", "cancelled"],
-      default: "ongoing"
-    },
-    documents: [{
-      type: String,
-      url: String,
-      uploadedAt: Date
-    }]
-  }],
-  currentRound: {
-    startDate: Date,
-    endDate: Date,
-    roundType: {
-      type: String,
-      enum: ["pre_seed", "seed", "series_a", "series_b", "series_c", "bridge", "growth"]
-    },
-    targetAmount: Number,
-    minimumTicket: Number,
-    maximumTicket: Number,
-    currentAmount: {
-      type: Number,
-      default: 0
-    },
-    preMoneyValuation: Number,
-    sharePrice: Number,
-    totalShares: Number,
-    availableEquity: Number,
-    investorPerks: [String],
-    useOfFunds: [{
-      category: String,
-      amount: Number,
-      description: String
-    }],
-    keyMilestones: [{
-      title: String,
-      description: String,
-      targetDate: Date
-    }]
-  },
-  metrics: {
-    averageInvestmentSize: Number,
-    largestInvestment: Number,
-    smallestInvestment: Number,
-    averageEquityPerInvestor: Number,
-    totalEquityAllocated: Number,
-    remainingEquity: Number
-  }
-}
+      investorId: {
+        type: String, // Clerk user ID
+        required: true
+      },
+      // Investment Details
+      amount: {
+        type: Number,
+        required: true
+      },
+      investmentType: {
+        type: String,
+        enum: ["equity", "convertible", "safe", "debt"],
+        required: true
+      },
+      investmentStructure: {
+        type: String,
+        enum: ["direct", "spv"],
+        required: true
+      },
+      paymentMethod: {
+        type: String,
+        enum: ["wire", "crypto", "escrow"],
+        required: true
+      },
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "pitcher_review",
+          "admin_review",
+          "payment_pending",
+          "payment_processing",
+          "completed",
+          "rejected",
+          "cancelled"
+        ],
+        default: "pending"
+      },
+      paymentDetails: {
+        stripeSessionId: String,
+        paymentStatus: String,
+        paymentDate: Date,
+        transactionId: String
+      },
 
+      // Investment Strategy
+      investmentThesis: {
+        type: String,
+        required: true
+      },
+      expectedHoldingPeriod: {
+        type: String,
+        enum: ["1-2", "3-5", "5-7", "7+"],
+        required: true
+      },
+      exitStrategy: {
+        type: String,
+        enum: ["ipo", "acquisition", "secondary", "buyback"],
+        required: true
+      },
+      valueAddProposal: String,
+
+      // Risk Assessment
+      riskTolerance: {
+        type: String,
+        enum: ["conservative", "moderate", "aggressive"],
+        required: true
+      },
+      keyRiskFactors: [String],
+      mitigationStrategies: String,
+
+      // Due Diligence
+      dueDiligence: {
+        businessModel: Boolean,
+        financials: Boolean,
+        market: Boolean,
+        team: Boolean,
+        legal: Boolean,
+        technology: Boolean,
+        competition: Boolean,
+        intellectualProperty: Boolean,
+        regulatory: Boolean,
+        customerBase: Boolean,
+        growthStrategy: Boolean,
+        operationalEfficiency: Boolean
+      },
+
+      // Investor Profile
+      investorProfile: {
+        investmentExperience: {
+          type: String,
+          enum: ["novice", "intermediate", "experienced", "expert"],
+          required: true
+        },
+        sectorExpertise: String,
+        accreditationStatus: {
+          type: String,
+          enum: ["accredited", "qualified", "institutional", "non-accredited"],
+          required: true
+        },
+        investmentGoals: String
+      },
+
+      // Terms and Additional Info
+      terms: String,
+      additionalRequests: String,
+      boardSeatInterest: Boolean,
+      strategicPartnership: Boolean,
+
+      // Compliance
+      sourceOfFunds: {
+        type: String,
+        enum: ["personal", "business", "investment", "inheritance", "other"],
+        required: true
+      },
+      kycCompleted: {
+        type: Boolean,
+        default: false
+      },
+      kycDocuments: [String],
+      accreditationVerified: {
+        type: Boolean,
+        default: false
+      },
+
+      // Timestamps
+      submittedAt: {
+        type: Date,
+        default: Date.now
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now
+      },
+      completedAt: Date,
+
+      equity: {
+        type: Number,
+        required: function() {
+          return this.parent().investmentType === "equity";
+        },
+        validate: {
+          validator: function(value) {
+            if (this.parent().investmentType === "equity") {
+              return value != null && value > 0;
+            }
+            return true;
+          },
+          message: "Equity percentage is required for equity investments and must be greater than 0"
+        }
+      }
+    }],
+    fundingDetails: {
+      totalFundingRaised: {
+        type: Number,
+        default: 0
+      },
+      numberOfInvestors: {
+        type: Number,
+        default: 0
+      },
+      fundingRounds: [{
+        roundName: String,
+        roundType: {
+          type: String,
+          enum: ["pre_seed", "seed", "series_a", "series_b", "series_c", "bridge", "growth"]
+        },
+        targetAmount: Number,
+        amount: Number,
+        preMoneyValuation: Number,
+        postMoneyValuation: Number,
+        date: Date,
+        leadInvestor: String,
+        investors: [{
+          investorId: String,
+          amount: Number,
+          equity: Number
+        }],
+        terms: {
+          sharePrice: Number,
+          sharesIssued: Number,
+          proRataRights: Boolean,
+          votingRights: Boolean
+        },
+        status: {
+          type: String,
+          enum: ["planned", "ongoing", "completed", "cancelled"],
+          default: "ongoing"
+        },
+        documents: [{
+          type: String,
+          url: String,
+          uploadedAt: Date
+        }]
+      }],
+      currentRound: {
+        startDate: Date,
+        endDate: Date,
+        roundType: {
+          type: String,
+          enum: ["pre_seed", "seed", "series_a", "series_b", "series_c", "bridge", "growth"]
+        },
+        targetAmount: Number,
+        minimumTicket: Number,
+        maximumTicket: Number,
+        currentAmount: {
+          type: Number,
+          default: 0
+        },
+        preMoneyValuation: Number,
+        sharePrice: Number,
+        totalShares: Number,
+        availableEquity: Number,
+        investorPerks: [String],
+        useOfFunds: [{
+          category: String,
+          amount: Number,
+          description: String
+        }],
+        keyMilestones: [{
+          title: String,
+          description: String,
+          targetDate: Date
+        }]
+      },
+      metrics: {
+        averageInvestmentSize: Number,
+        largestInvestment: Number,
+        smallestInvestment: Number,
+        averageEquityPerInvestor: Number,
+        totalEquityAllocated: Number,
+        remainingEquity: Number
+      }
+    }
   },
   {
     timestamps: true,

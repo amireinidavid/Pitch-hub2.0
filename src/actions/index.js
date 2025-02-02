@@ -3773,8 +3773,26 @@ export async function uploadFileAction(formData) {
       throw new Error('No file provided');
     }
 
-    const preset = UPLOAD_PRESETS[fileType.toUpperCase()] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
+    // Map file types to presets
+    const fileTypeMap = {
+      'image': 'PITCH_IMAGES',
+      'logo': 'PITCH_IMAGES', // Use same preset as images
+      'video': 'PITCH_VIDEOS',
+      'document': 'PITCH_DOCUMENTS',
+      'slide': 'PITCH_SLIDES',
+    };
+
+    const preset = UPLOAD_PRESETS[fileTypeMap[fileType]] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
     const uploadOptions = getUploadOptions(preset);
+
+    // Add special transformations for logo
+    if (fileType === 'logo') {
+      uploadOptions.transformation = [
+        { width: 500, height: 500, crop: 'limit' },
+        { quality: 'auto:good' },
+        { fetch_format: 'auto' }
+      ];
+    }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
