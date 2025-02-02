@@ -654,7 +654,7 @@ console.log(data?.pitches?.industry, "data");
                         Quick View
                       </button>
                       <Link
-                        href={`/pitching/investments/${investment.investmentId}`}
+                        href={`/pitching/investments/${investment._id}`}
                         className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                       >
                         View Details
@@ -727,7 +727,7 @@ console.log(data?.pitches?.industry, "data");
                         Close
                       </button>
                       <Link
-                        href={`/pitching/investments/${selectedInvestment.pitchId}/${selectedInvestment.id}`}
+                        href={`/pitching/investments/${selectedInvestment._id}`}
                         className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600"
                       >
                         View Full Details

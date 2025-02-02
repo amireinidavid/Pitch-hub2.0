@@ -5,7 +5,7 @@ import Application from "@/models/application";
 import Pitch from "@/models/pitch";
 import Profile from "@/models/profile";
 import { revalidatePath } from "next/cache";
-import cloudinary from "@/lib/cloudinary";
+import cloudinary, { UPLOAD_PRESETS, getUploadOptions } from "@/lib/cloudinary";
 import Category from "@/models/category";
 import { sendPitchStatusEmail } from "@/lib/emailService";
 import Investment from "@/models/investment";
@@ -3759,6 +3759,47 @@ export async function fetchUserNotificationsAction(userId, userRole) {
       success: false,
       error: error.message,
       notifications: []
+    };
+  }
+}
+
+// Add this new server action for file uploads
+export async function uploadFileAction(formData) {
+  try {
+    const file = formData.get('file');
+    const fileType = formData.get('fileType');
+    
+    if (!file) {
+      throw new Error('No file provided');
+    }
+
+    const preset = UPLOAD_PRESETS[fileType.toUpperCase()] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
+    const uploadOptions = getUploadOptions(preset);
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) reject(error);
+          resolve(result);
+        }
+      );
+      uploadStream.end(buffer);
+    });
+
+    return {
+      success: true,
+      url: result.secure_url,
+      publicId: result.public_id,
+    };
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    return {
+      success: false,
+      error: error.message || "Failed to upload file"
     };
   }
 }

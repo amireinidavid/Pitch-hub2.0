@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { uploadFileAction } from "@/actions";
 
 const formSchema = z.object({
   media: z.object({
@@ -102,15 +103,13 @@ function MediaDocs({ data, updateData }) {
       formData.append("file", file);
       formData.append("fileType", type);
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const result = await uploadFileAction(formData);
 
-      if (!response.ok) throw new Error("Upload failed");
+      if (!result.success) {
+        throw new Error(result.error || "Upload failed");
+      }
 
-      const data = await response.json();
-      field.onChange(data.url);
+      field.onChange(result.url);
       handleFieldChange();
 
       toast({

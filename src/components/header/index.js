@@ -68,6 +68,12 @@ function Header({ user, profileInfo }) {
       show: profileInfo?.role === "pitcher",
       items: [
         {
+          title: "Dashboard",
+          href: "/pitching/dashboard",
+          description: "View your pitch dashboard",
+          icon: <FiBarChart className="w-6 h-6" />,
+        },
+        {
           title: "Create Pitch",
           href: "/pitching/create",
           description: "Start crafting your perfect pitch",
