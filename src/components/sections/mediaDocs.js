@@ -19,7 +19,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -29,12 +29,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { uploadFileAction } from "@/actions";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { FileText } from "lucide-react";
 
 const formSchema = z.object({
   media: z.object({
-    logo: z.string().url().optional(),
+    logo: z.object({
+      url: z.string().url().optional(),
+      publicId: z.string().optional(),
+    }),
     pitchDeck: z.string().url().optional(),
-    video: z.string().url().optional(),
+    video: z.object({
+      url: z.string().url().optional(),
+      publicId: z.string().optional(),
+      thumbnail: z.string().url().optional(),
+    }),
     images: z.array(
       z.object({
         url: z.string().url(),
@@ -68,22 +77,146 @@ const formSchema = z.object({
   ),
 });
 
+// Helper function to fetch file size from URL
+const getFileSizeFromUrl = async (url) => {
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    const size = response.headers.get('content-length');
+    return formatFileSize(parseInt(size));
+  } catch (error) {
+    console.error('Error fetching file size:', error);
+    return 'Size unknown';
+  }
+};
+
+// Helper function to format file size in human-readable format
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
+const handleFieldChange = (form) => {
+  form.trigger();
+};
+
+const handleMultipleFileUpload = async (e, field, type, form, toast) => {
+  const files = Array.from(e.target.files || []);
+  const existingFiles = field.value || [];
+  
+  try {
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileType", type);
+      
+      const result = await uploadFileAction(formData);
+      
+      if (!result.success) {
+        throw new Error(`Failed to upload ${file.name}`);
+      }
+      
+      return {
+        url: result.url,
+        publicId: result.publicId,
+        title: file.name.split('.')[0],
+        type: type === 'document' ? 'other' : undefined,
+        description: '',
+        order: type === 'slide' ? existingFiles.length : undefined,
+      };
+    });
+    
+    const newFiles = await Promise.all(uploadPromises);
+    field.onChange([...existingFiles, ...newFiles]);
+    
+    toast({
+      title: "Upload Successful",
+      description: `Successfully uploaded ${files.length} file(s)`,
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    toast({
+      title: "Upload Failed",
+      description: error.message,
+      variant: "destructive",
+    });
+  }
+};
+
+const handleDocumentTitleChange = (index, value, field) => {
+  const newDocs = [...field.value];
+  newDocs[index] = { ...newDocs[index], title: value };
+  field.onChange(newDocs);
+};
+
+const handleDocumentTypeChange = (index, value, field) => {
+  const newDocs = [...field.value];
+  newDocs[index] = { ...newDocs[index], type: value };
+  field.onChange(newDocs);
+};
+
+const handleDocumentDescriptionChange = (index, value, field) => {
+  const newDocs = [...field.value];
+  newDocs[index] = { ...newDocs[index], description: value };
+  field.onChange(newDocs);
+};
+
+const handleRemoveDocument = (index, field) => {
+  const newDocs = [...field.value];
+  newDocs.splice(index, 1);
+  field.onChange(newDocs);
+};
+
+const handleSlideChange = (index, key, value, field) => {
+  const newSlides = [...field.value];
+  newSlides[index] = { ...newSlides[index], [key]: value };
+  field.onChange(newSlides);
+};
+
+const handleRemoveSlide = (index, field) => {
+  const newSlides = [...field.value];
+  newSlides.splice(index, 1);
+  field.onChange(newSlides);
+};
+
+const handleSlideDragEnd = (result, field) => {
+  if (!result.destination) return;
+
+  const items = Array.from(field.value);
+  const [reorderedItem] = items.splice(result.source.index, 1);
+  items.splice(result.destination.index, 0, reorderedItem);
+
+  // Update order numbers
+  const updatedItems = items.map((item, index) => ({
+    ...item,
+    order: index,
+  }));
+
+  field.onChange(updatedItems);
+};
+
+
 function MediaDocs({ data, updateData }) {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewVideo, setPreviewVideo] = useState(null);
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       media: data.media || {
+        logo: { url: "", publicId: "" },
         pitchDeck: "",
-        video: "",
+        video: { url: "", publicId: "", thumbnail: "" },
+        documents: [],
         images: [],
         slides: [],
       },
-      documents: data.documents || [],
-      pressLinks: data.pressLinks || [],
     },
   });
 
@@ -100,19 +233,15 @@ function MediaDocs({ data, updateData }) {
       setUploading(true);
       setUploadProgress(0);
 
-      // Map the UI types to actual file types
-      const fileTypeMap = {
-        'image': 'image',
-        'logo': 'logo',
-        'video': 'video',
-        'document': 'document',
-        'slide': 'slide',
-        'audio': 'audio'
-      };
-
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("fileType", fileTypeMap[type] || 'document'); // Send simple type
+      formData.append("fileType", type);
+      formData.append("fileSize", file.size);
+
+      if (type === 'video') {
+        // Create video preview
+        setPreviewVideo(URL.createObjectURL(file));
+      }
 
       const result = await uploadFileAction(formData);
 
@@ -120,7 +249,12 @@ function MediaDocs({ data, updateData }) {
         throw new Error(result.error || "Upload failed");
       }
 
-      field.onChange(result.url);
+      field.onChange({
+        url: result.url,
+        publicId: result.publicId,
+        fileSize: formatFileSize(file.size),
+        ...(type === 'video' && { thumbnail: result.thumbnail }),
+      });
       handleFieldChange();
 
       toast({
@@ -233,444 +367,326 @@ function MediaDocs({ data, updateData }) {
   return (
     <Form {...form}>
       <form onChange={handleFieldChange} className="space-y-8">
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Media & Documents</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Upload and manage your pitch deck, logo, images, videos, and other
-            supporting documents.
-          </p>
-        </div>
-
-        {/* Company Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-2"
-        >
-          <FormField
-            control={form.control}
-            name="media.logo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Company Logo</FormLabel>
-                <FormControl>
-                  <div className="space-y-2">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e, field, "logo")}
-                    />
-                    {field.value && (
-                      <div className="mt-2">
-                        <Image
-                          src={field.value}
-                          alt="Company Logo"
-                          width={100}
-                          height={100}
-                          className="rounded-md object-contain"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </motion.div>
-
-        {/* Pitch Deck */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-2"
-        >
-          <Label htmlFor="pitchDeck">Pitch Deck URL *</Label>
-          <Input
-            id="pitchDeck"
-            value={data.media?.pitchDeck || ""}
-            onChange={(e) => {
-              form.setValue("media.pitchDeck", e.target.value);
-              handleFieldChange();
-            }}
-            placeholder="URL to your pitch deck"
-            type="url"
-            required
-          />
-          <p className="text-xs text-gray-500">
-            Upload your pitch deck to a cloud service and provide the link here
-          </p>
-        </motion.div>
-
-        {/* Presentation Slides */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Presentation Slides</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addSlide}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Slide
-            </Button>
+        <div className="grid gap-8">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 rounded-xl">
+            <h2 className="text-2xl font-bold text-gray-800">Media & Documents</h2>
+            <p className="text-gray-600 mt-2">
+              Enhance your pitch with compelling visuals and documentation
+            </p>
           </div>
 
-          <AnimatePresence>
-            {form.watch("media.slides")?.map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 p-4 border rounded-lg"
-              >
-                <div className="flex justify-between items-center">
-                  <h4 className="font-medium">Slide {index + 1}</h4>
-                  <div className="flex gap-2">
+          {/* Main Content Grid */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Logo Upload Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+            >
+              <FormField
+                control={form.control}
+                name="media.logo"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between mb-4">
+                      <FormLabel className="text-lg font-semibold">Company Logo</FormLabel>
+                      {field.value?.url && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => field.onChange({ url: "", publicId: "" })}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl hover:border-primary/50 transition-all bg-gray-50/50">
+                      <div className="space-y-2 text-center">
+                        {field.value?.url ? (
+                          <div className="relative w-32 h-32 mx-auto">
+                            <Image
+                              src={field.value.url}
+                              alt="Company Logo"
+                              fill
+                              className="object-contain rounded-lg"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="flex text-sm text-gray-600">
+                              <label className="relative cursor-pointer rounded-md bg-white font-semibold text-primary hover:text-primary/80">
+                                <span>Upload logo</span>
+                                <input
+                                  type="file"
+                                  className="sr-only"
+                                  accept="image/*"
+                                  onChange={(e) => handleFileUpload(e, field, "logo")}
+                                />
+                              </label>
+                            </div>
+                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </motion.div>
+
+            {/* Video Upload Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+            >
+              <FormField
+                control={form.control}
+                name="media.video"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between mb-4">
+                      <FormLabel className="text-lg font-semibold">Pitch Video</FormLabel>
+                      {field.value?.url && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => field.onChange({ url: "", publicId: "", thumbnail: "" })}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {(field.value?.url || previewVideo) ? (
+                      <div className="relative rounded-lg overflow-hidden">
+                        <video
+                          src={field.value?.url || previewVideo}
+                          controls
+                          className="w-full aspect-video object-cover rounded-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-xl hover:border-primary/50 transition-all bg-gray-50/50">
+                        <div className="space-y-2 text-center">
+                          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                          <div className="flex text-sm text-gray-600">
+                            <label className="relative cursor-pointer rounded-md bg-white font-semibold text-primary hover:text-primary/80">
+                              <span>Upload video</span>
+                              <input
+                                type="file"
+                                className="sr-only"
+                                accept="video/*"
+                                onChange={(e) => handleFileUpload(e, field, "video")}
+                              />
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500">MP4, MOV up to 100MB</p>
+                        </div>
+                      </div>
+                    )}
+                  </FormItem>
+                )}
+              />
+            </motion.div>
+          </div>
+
+          {/* Documents Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <FormField
+              control={form.control}
+              name="media.documents"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between mb-4">
+                    <FormLabel className="text-lg font-semibold">Documents</FormLabel>
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => moveSlide(index, "up")}
-                      disabled={index === 0}
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => moveSlide(index, "down")}
-                      disabled={index === form.watch("media.slides").length - 1}
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => {
-                        const current = form.getValues("media.slides");
-                        form.setValue(
-                          "media.slides",
-                          current.filter((_, i) => i !== index)
-                        );
-                        handleFieldChange();
+                        const fileInput = document.createElement('input');
+                        fileInput.type = 'file';
+                        fileInput.accept = '.pdf,.doc,.docx';
+                        fileInput.multiple = true;
+                        fileInput.onchange = (e) => handleMultipleFileUpload(e, field, "document");
+                        fileInput.click();
                       }}
                     >
-                      <X className="h-4 w-4" />
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Document
                     </Button>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name={`media.slides.${index}.title`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Slide Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`media.slides.${index}.url`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Slide Image</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) =>
-                              handleFileUpload(e, field, "slide")
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name={`media.slides.${index}.description`}
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>Slide Description</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {form.watch(`media.slides.${index}.url`) && (
-                  <div className="mt-2">
-                    <Image
-                      src={form.watch(`media.slides.${index}.url`)}
-                      alt={`Slide ${index + 1}`}
-                      width={200}
-                      height={150}
-                      className="rounded-md"
-                    />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    {field.value?.map((doc, index) => (
+                      <motion.div
+                        key={doc.url}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative group bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className="p-2 bg-white rounded-md shadow-sm">
+                            <FileText className="h-8 w-8 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <Input
+                              value={doc.title}
+                              onChange={(e) => handleDocumentTitleChange(index, e.target.value, field)}
+                              placeholder="Document Title"
+                              className="font-medium mb-1"
+                            />
+                            <Select
+                              value={doc.type}
+                              onValueChange={(value) => handleDocumentTypeChange(index, value, field)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="financial">Financial Report</SelectItem>
+                                <SelectItem value="legal">Legal Document</SelectItem>
+                                <SelectItem value="technical">Technical Documentation</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Textarea
+                              value={doc.description}
+                              onChange={(e) => handleDocumentDescriptionChange(index, e.target.value, field)}
+                              placeholder="Brief description..."
+                              className="mt-2 text-sm"
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveDocument(index, field)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-sm text-gray-500">
+                          <span>{formatFileSize(getFileSizeFromUrl(doc.url))}</span>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:text-primary/80"
+                          >
+                            View Document
+                          </a>
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Images Gallery */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Images Gallery</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addImage}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Image
-            </Button>
-          </div>
-
-          <AnimatePresence>
-            {form.watch("media.images").map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 p-4 border rounded-lg"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 space-y-4">
-                    <div className="space-y-2">
-                      <Label>Image URL</Label>
-                      <Input
-                        value={form.watch(`media.images.${index}.url`)}
-                        onChange={(e) => {
-                          form.setValue(
-                            `media.images.${index}.url`,
-                            e.target.value
-                          );
-                          handleFieldChange();
-                        }}
-                        placeholder="URL to the image"
-                        type="url"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Caption</Label>
-                      <Input
-                        value={form.watch(`media.images.${index}.caption`)}
-                        onChange={(e) => {
-                          form.setValue(
-                            `media.images.${index}.caption`,
-                            e.target.value
-                          );
-                          handleFieldChange();
-                        }}
-                        placeholder="Image caption"
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      const current = form.getValues("media.images");
-                      form.setValue(
-                        "media.images",
-                        current.filter((_, i) => i !== index)
-                      );
-                      handleFieldChange();
-                    }}
-                    className="ml-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Documents */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Supporting Documents</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addDocument}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Document
-            </Button>
-          </div>
-
-          <AnimatePresence>
-            {form.watch("documents").map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 p-4 border rounded-lg"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Document Title</Label>
-                        <Input
-                          value={form.watch(`documents.${index}.title`)}
-                          onChange={(e) =>
-                            updateDocument(index, "title", e.target.value)
-                          }
-                          placeholder="Enter document title"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Document Type</Label>
-                        <Select
-                          value={form.watch(`documents.${index}.type`)}
-                          onValueChange={(value) =>
-                            updateDocument(index, "type", value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select document type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {documentTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type
-                                  .split("_")
-                                  .map(
-                                    (word) =>
-                                      word.charAt(0).toUpperCase() +
-                                      word.slice(1)
-                                  )
-                                  .join(" ")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Document URL</Label>
-                      <Input
-                        value={form.watch(`documents.${index}.url`)}
-                        onChange={(e) =>
-                          updateDocument(index, "url", e.target.value)
-                        }
-                        placeholder="URL to the document"
-                        type="url"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={form.watch(`documents.${index}.description`)}
-                        onChange={(e) =>
-                          updateDocument(index, "description", e.target.value)
-                        }
-                        placeholder="Brief description of the document"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeDocument(index)}
-                    className="ml-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Press Links */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Press Coverage</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addPressLink}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Press Link
-            </Button>
-          </div>
-
-          <AnimatePresence>
-            {form.watch("pressLinks").map((_, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 p-4 border rounded-lg"
-              >
-                {/* Press link fields */}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {uploading && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-2"
-          >
-            <Progress value={uploadProgress} />
-            <p className="text-sm text-gray-500">Uploading...</p>
+                </FormItem>
+              )}
+            />
           </motion.div>
-        )}
+
+          {/* Slides Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+          >
+            <FormField
+              control={form.control}
+              name="media.slides"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between mb-4">
+                    <FormLabel className="text-lg font-semibold">Presentation Slides</FormLabel>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const fileInput = document.createElement('input');
+                        fileInput.type = 'file';
+                        fileInput.accept = 'image/*';
+                        fileInput.multiple = true;
+                        fileInput.onchange = (e) => handleMultipleFileUpload(e, field, "slide");
+                        fileInput.click();
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Slides
+                    </Button>
+                  </div>
+
+                  <DragDropContext onDragEnd={(result) => handleSlideDragEnd(result, field)}>
+                    <Droppable droppableId="slides" direction="horizontal">
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4"
+                        >
+                          {field.value?.map((slide, index) => (
+                            <Draggable key={slide.url} draggableId={slide.url} index={index}>
+                              {(provided) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                >
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="relative group"
+                                  >
+                                    <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
+                                      <Image
+                                        src={slide.url}
+                                        alt={slide.title || `Slide ${index + 1}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="absolute top-2 right-2 flex space-x-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleRemoveSlide(index, field)}
+                                          >
+                                            <X className="h-4 w-4 text-white" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <Input
+                                      value={slide.title}
+                                      onChange={(e) => handleSlideChange(index, 'title', e.target.value, field)}
+                                      placeholder={`Slide ${index + 1}`}
+                                      className="mt-2 text-sm"
+                                    />
+                                  </motion.div>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                </FormItem>
+              )}
+            />
+          </motion.div>
+        </div>
       </form>
     </Form>
   );
 }
 
 export default MediaDocs;
+

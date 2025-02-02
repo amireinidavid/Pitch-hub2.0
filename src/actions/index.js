@@ -3784,26 +3784,44 @@ export async function uploadFileAction(formData) {
   try {
     const file = formData.get('file');
     const fileType = formData.get('fileType');
+    const fileSize = formData.get('fileSize');
     
     if (!file) {
       throw new Error('No file provided');
     }
 
-    // Map file types to presets
+    // Add file size validation
+    const maxSizes = {
+      'logo': 5 * 1024 * 1024, // 5MB
+      'video': 100 * 1024 * 1024, // 100MB
+      'document': 20 * 1024 * 1024, // 20MB
+      'slide': 10 * 1024 * 1024, // 10MB
+      'image': 10 * 1024 * 1024, // 10MB
+    };
+
+    if (fileSize > maxSizes[fileType]) {
+      throw new Error(`File size exceeds maximum limit for ${fileType}`);
+    }
+
     const presetMap = {
-      'image': UPLOAD_PRESETS.PITCH_IMAGES,
       'logo': UPLOAD_PRESETS.PITCH_IMAGES,
       'video': UPLOAD_PRESETS.PITCH_VIDEOS,
       'document': UPLOAD_PRESETS.PITCH_DOCUMENTS,
       'slide': UPLOAD_PRESETS.PITCH_SLIDES,
-      'audio': UPLOAD_PRESETS.PITCH_AUDIO
+      'image': UPLOAD_PRESETS.PITCH_IMAGES,
     };
 
-    const preset = presetMap[fileType] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
+    const preset = presetMap[fileType];
     const uploadOptions = getUploadOptions(preset);
 
-    // Add special transformations for logo
-    if (fileType === 'logo') {
+    // Add special transformations based on file type
+    if (fileType === 'video') {
+      uploadOptions.eager = [
+        { width: 300, height: 300, crop: "pad", audio_codec: "none" },
+        { width: 160, height: 100, crop: "crop", gravity: "south", audio_codec: "none" }
+      ];
+      uploadOptions.eager_async = true;
+    } else if (fileType === 'logo') {
       uploadOptions.transformation = [
         { width: 500, height: 500, crop: 'limit' },
         { quality: 'auto:good' },
@@ -3814,14 +3832,12 @@ export async function uploadFileAction(formData) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    console.log('Upload options:', uploadOptions); // Debug log
-
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
         (error, result) => {
           if (error) {
-            console.error('Cloudinary upload error details:', error); // Debug log
+            console.error('Cloudinary upload error details:', error);
             reject(error);
           }
           resolve(result);
@@ -3834,6 +3850,10 @@ export async function uploadFileAction(formData) {
       success: true,
       url: result.secure_url,
       publicId: result.public_id,
+      fileSize: parseInt(fileSize),
+      ...(fileType === 'video' && {
+        thumbnail: result.eager?.[1]?.secure_url
+      })
     };
   } catch (error) {
     console.error("Cloudinary upload error:", error);

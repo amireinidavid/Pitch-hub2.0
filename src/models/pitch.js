@@ -248,30 +248,45 @@ const pitchSchema = new mongoose.Schema(
 
     // Media & Documents
     media: {
-      logo: String,
+      logo: {
+        url: String,
+        publicId: String,
+        fileSize: Number,
+      },
       pitchDeck: String,
-      video: String,
+      video: {
+        url: String,
+        publicId: String,
+        thumbnail: String,
+        fileSize: Number,
+      },
       documents: [
         {
           title: String,
           type: String,
           url: String,
+          publicId: String,
           description: String,
           uploadDate: Date,
+          fileSize: Number,
         }
       ],
       images: [
         {
           url: String,
+          publicId: String,
           caption: String,
+          fileSize: Number,
         }
       ],
       slides: [
         {
           url: String,
+          publicId: String,
           order: Number,
           title: String,
           description: String,
+          fileSize: Number,
         }
       ],
     },
