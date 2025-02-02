@@ -3790,15 +3790,16 @@ export async function uploadFileAction(formData) {
     }
 
     // Map file types to presets
-    const fileTypeMap = {
-      'image': 'PITCH_IMAGES',
-      'logo': 'PITCH_IMAGES', // Use same preset as images
-      'video': 'PITCH_VIDEOS',
-      'document': 'PITCH_DOCUMENTS',
-      'slide': 'PITCH_SLIDES',
+    const presetMap = {
+      'image': UPLOAD_PRESETS.PITCH_IMAGES,
+      'logo': UPLOAD_PRESETS.PITCH_IMAGES,
+      'video': UPLOAD_PRESETS.PITCH_VIDEOS,
+      'document': UPLOAD_PRESETS.PITCH_DOCUMENTS,
+      'slide': UPLOAD_PRESETS.PITCH_SLIDES,
+      'audio': UPLOAD_PRESETS.PITCH_AUDIO
     };
 
-    const preset = UPLOAD_PRESETS[fileTypeMap[fileType]] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
+    const preset = presetMap[fileType] || UPLOAD_PRESETS.PITCH_DOCUMENTS;
     const uploadOptions = getUploadOptions(preset);
 
     // Add special transformations for logo
@@ -3813,11 +3814,16 @@ export async function uploadFileAction(formData) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    console.log('Upload options:', uploadOptions); // Debug log
+
     const result = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         uploadOptions,
         (error, result) => {
-          if (error) reject(error);
+          if (error) {
+            console.error('Cloudinary upload error details:', error); // Debug log
+            reject(error);
+          }
           resolve(result);
         }
       );

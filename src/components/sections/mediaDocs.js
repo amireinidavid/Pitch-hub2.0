@@ -100,17 +100,19 @@ function MediaDocs({ data, updateData }) {
       setUploading(true);
       setUploadProgress(0);
 
+      // Map the UI types to actual file types
       const fileTypeMap = {
-        'image': 'PITCH_IMAGES',
-        'video': 'PITCH_VIDEOS',
-        'document': 'PITCH_DOCUMENTS',
-        'slide': 'PITCH_SLIDES',
-        'audio': 'PITCH_AUDIO'
+        'image': 'image',
+        'logo': 'logo',
+        'video': 'video',
+        'document': 'document',
+        'slide': 'slide',
+        'audio': 'audio'
       };
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("fileType", fileTypeMap[type] || 'PITCH_DOCUMENTS');
+      formData.append("fileType", fileTypeMap[type] || 'document'); // Send simple type
 
       const result = await uploadFileAction(formData);
 
@@ -256,7 +258,7 @@ function MediaDocs({ data, updateData }) {
                     <Input
                       type="file"
                       accept="image/*"
-                      onChange={(e) => handleFileUpload(e, field, "image")}
+                      onChange={(e) => handleFileUpload(e, field, "logo")}
                     />
                     {field.value && (
                       <div className="mt-2">

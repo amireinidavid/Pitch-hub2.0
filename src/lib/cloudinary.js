@@ -51,8 +51,8 @@ function getResourceType(preset) {
 
 // Helper function to get allowed formats
 function getAllowedFormats(preset) {
-  if (preset.includes('documents')) {
-    return ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'rtf', 'csv', 'xls', 'xlsx'];
+  if (preset.includes('images') || preset.includes('slides')) {
+    return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
   }
   if (preset.includes('videos')) {
     return ['mp4', 'mov', 'avi', 'wmv', 'flv', 'mkv', 'webm'];
@@ -60,14 +60,10 @@ function getAllowedFormats(preset) {
   if (preset.includes('audio')) {
     return ['mp3', 'wav', 'ogg', 'm4a', 'aac'];
   }
-  if (preset.includes('images') || preset.includes('slides')) {
-    return [
-      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 
-      'tiff', 'svg', 'heic', 'heif', 'raw'
-    ];
+  if (preset.includes('documents')) {
+    return ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'txt', 'rtf'];
   }
-  // For auto/unknown types, return null to accept all formats
-  return null;
+  return null; // Allow all formats if not specified
 }
 
 // Helper function to get transformations
