@@ -5,6 +5,11 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  pitchId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Pitch',
+    required: false // Optional, as not all notifications are pitch-related
+  },
   title: {
     type: String,
     required: true

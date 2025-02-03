@@ -3717,50 +3717,50 @@ export async function fetchPendingInvestments() {
 }
 
 // Add this new action to fetch notifications
-export async function fetchUserNotificationsAction(userId, userRole) {
+export async function fetchUserNotificationsAction(userId) {
   try {
     await connectToDB();
     
-    // Base query to find notifications for the user
-    const baseQuery = { userId };
+    if (!userId) {
+      throw new Error("User ID is required");
+    }
 
-    // Add type filters based on user role
-    if (userRole === 'investor') {
-      // Investors should only see investment-related notifications
-      baseQuery.type = {
-        $in: [
-          'investment_submitted',
-          'investment_approved',
-          'investment_rejected',
-          'payment_pending',
-          'payment_confirmed'
-        ]
-      };
-    } else if (userRole === 'pitcher') {
-      // Pitchers should see pitch and investment notifications for their pitches
-      baseQuery.type = {
-        $in: [
-          'new_investment',
-          'pitch_review',
-          'pitch_approved',
-          'pitch_rejected',
-          'investment_completed'
-        ]
-      };
-    } else if (userRole === 'admin') {
-      // Admins see all types of notifications
-      baseQuery.type = {
-        $in: [
-          'investment_review',
-          'pitch_review',
-          'new_pitch',
-          'reported_content',
-          'system_alert'
+    // Get user's profile to determine role
+    const userProfile = await Profile.findOne({ userId }).lean();
+    if (!userProfile) {
+      throw new Error("User profile not found");
+    }
+
+    let query = { userId };
+
+    // For investors, include notifications about their investments
+    if (userProfile.role === 'investor') {
+      const investments = await Investment.find({ investorId: userId })
+        .select('pitchId')
+        .lean();
+
+      const pitchIds = investments.map(inv => inv.pitchId);
+
+      query = {
+        $or: [
+          { userId }, // Direct notifications to the user
+          { 
+            pitchId: { $in: pitchIds },
+            type: { 
+              $in: [
+                'investment_submitted',
+                'investment_approved',
+                'investment_rejected',
+                'payment_pending',
+                'payment_confirmed'
+              ]
+            }
+          }
         ]
       };
     }
 
-    const notifications = await Notification.find(baseQuery)
+    const notifications = await Notification.find(query)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -3775,6 +3775,63 @@ export async function fetchUserNotificationsAction(userId, userRole) {
       success: false,
       error: error.message,
       notifications: []
+    };
+  }
+}
+
+export async function markNotificationAsReadAction(notificationId) {
+  try {
+    await connectToDB();
+
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { read: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      throw new Error("Notification not found");
+    }
+
+    return {
+      success: true,
+      notification: JSON.parse(JSON.stringify(notification))
+    };
+
+  } catch (error) {
+    console.error("Mark notification as read error:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Add this action to create notifications
+export async function createNotificationAction(data) {
+  try {
+    await connectToDB();
+
+    const notification = await Notification.create({
+      userId: data.userId,
+      pitchId: data.pitchId,
+      title: data.title,
+      message: data.message,
+      type: data.type,
+      link: data.link,
+      priority: data.priority || 'medium'
+    });
+
+    return {
+      success: true,
+      notification: JSON.parse(JSON.stringify(notification))
+    };
+
+  } catch (error) {
+    console.error("Create notification error:", error);
+    return {
+      success: false,
+      error: error.message
     };
   }
 }

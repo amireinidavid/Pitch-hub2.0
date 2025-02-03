@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { fetchUserNotificationsAction } from "@/actions";
+import { fetchUserNotificationsAction, markNotificationAsReadAction, createNotificationAction } from "@/actions";
 import { useUser } from "@clerk/nextjs";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -25,9 +25,39 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const { user } = useUser();
   const { toast } = useToast();
+  const [userRole, setUserRole] = useState(null);
 
+  // First, fetch the user role
   useEffect(() => {
-    if (user) {
+    async function getUserRole() {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/users/${user.id}/profile`);
+          const data = await response.json();
+          setUserRole(data.role); // Assuming your profile API returns the user role
+        } catch (error) {
+          console.error("Failed to fetch user role:", error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch user role",
+            variant: "destructive",
+          });
+        }
+      }
+    }
+    getUserRole();
+  }, [user]);
+
+  // Then, fetch notifications once we have the role
+  useEffect(() => {
+    if (user?.id && userRole) {
+      loadNotifications();
+    }
+  }, [user, userRole]);
+
+  // Fetch notifications directly using the server action
+  useEffect(() => {
+    if (user?.id) {
       loadNotifications();
     }
   }, [user]);
@@ -35,12 +65,7 @@ export default function NotificationsPage() {
   async function loadNotifications() {
     try {
       setLoading(true);
-      // Get user role from your profile system
-      const userRole = "investor"; // Replace with actual role fetch
-      const result = await fetchUserNotificationsAction(user.id, userRole);
-      console.log(userRole
-        , "User Role"
-      );
+      const result = await fetchUserNotificationsAction(user.id);
       
       if (result.success) {
         setNotifications(result.notifications);
@@ -65,16 +90,21 @@ export default function NotificationsPage() {
 
   async function markAsRead(notificationId) {
     try {
-      const response = await fetch(`/api/notifications/${notificationId}/read`, {
-        method: 'POST'
-      });
-      if (response.ok) {
+      const result = await markNotificationAsReadAction(notificationId);
+      if (result.success) {
         setNotifications(notifications.map(notif => 
           notif._id === notificationId ? { ...notif, read: true } : notif
         ));
+      } else {
+        throw new Error(result.error);
       }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      });
     }
   }
 
