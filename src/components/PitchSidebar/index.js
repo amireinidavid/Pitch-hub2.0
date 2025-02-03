@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Bell,
@@ -16,6 +16,8 @@ import {
   Globe,
   Plus,
   Menu,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from 'next/navigation';
@@ -92,29 +94,25 @@ const mainNavItems = [
   },
 ];
 
-// NavItem component for both sidebars
-const NavItem = ({ item, isOpen, isMobile, isActive, onClick }) => {
+const NavItem = ({ item, isCollapsed, isActive }) => {
   const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
 
   return (
     <div>
       <Link
         href={item.path}
-        className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200
+        className={`
+          group flex items-center gap-3 p-3 rounded-xl
+          transition-all duration-200
           ${isActive ? 'bg-blue-500/10 text-blue-500' : 'hover:bg-slate-800/50'}
-          ${isMobile ? 'justify-center' : ''}`}
-        onClick={() => {
-          if (item.subItems) {
-            setIsSubMenuOpen(!isSubMenuOpen);
-          }
-          onClick?.();
-        }}
+        `}
+        onClick={() => item.subItems && setIsSubMenuOpen(!isSubMenuOpen)}
       >
         <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800/50">
           <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-500' : 'text-slate-400'}`} />
         </div>
         
-        {(isOpen && !isMobile) && (
+        {!isCollapsed && (
           <div className="flex-1 flex items-center justify-between">
             <span className={`text-sm font-medium ${isActive ? 'text-blue-500' : 'text-slate-300'}`}>
               {item.text}
@@ -129,98 +127,88 @@ const NavItem = ({ item, isOpen, isMobile, isActive, onClick }) => {
       </Link>
 
       {/* SubMenu Items */}
-      {item.subItems && isSubMenuOpen && isOpen && !isMobile && (
-        <div className="ml-12 mt-2 space-y-1">
-          {item.subItems.map((subItem, idx) => (
-            <Link
-              key={idx}
-              href={subItem.path}
-              className="block px-3 py-2 text-sm text-slate-400 hover:text-blue-500 rounded-lg"
-            >
-              {subItem.text}
-            </Link>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {item.subItems && isSubMenuOpen && !isCollapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="ml-12 mt-2 space-y-1"
+          >
+            {item.subItems.map((subItem, idx) => (
+              <Link
+                key={idx}
+                href={subItem.path}
+                className="block px-3 py-2 text-sm text-slate-400 hover:text-blue-500 rounded-lg"
+              >
+                {subItem.text}
+              </Link>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default function PitchingSidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+export default function PitchingSidebar({ isMobile, isCollapsed, onCollapse }) {
   const pathname = usePathname();
 
   return (
-    <>
-      {/* Desktop Sidebar */}
-      <motion.div
-        initial={{ width: isOpen ? 280 : 80 }}
-        animate={{ width: isOpen ? 280 : 80 }}
-        className="hidden lg:flex flex-col sticky left-0 top-0 h-screen bg-[#0A0F1C] border-r border-slate-800"
-      >
-        {/* Logo & Toggle */}
-        <div className="p-4 border-b border-slate-800">
-          <div className="flex items-center justify-between">
-            {isOpen && <span className="text-xl font-bold text-white">PitchHub</span>}
+    <div className={`
+      h-full bg-[#0A0F1C] flex flex-col border-r border-slate-800
+      transition-all duration-300 ease-in-out
+      ${isMobile ? 'w-full' : isCollapsed ? 'w-20' : 'w-64'}
+    `}>
+      {/* Logo & Toggle */}
+      <div className="p-4 border-b border-slate-800">
+        <div className="flex items-center justify-between">
+          {!isCollapsed && <span className="text-xl font-bold text-white">PitchHub</span>}
+          {isMobile && (
             <button
-              onClick={() => setIsOpen(!isOpen)}
+              onClick={() => onCollapse()}
               className="p-2 rounded-lg hover:bg-slate-800"
             >
               <Menu className="w-5 h-5 text-slate-400" />
             </button>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          {mainNavItems.map((section, idx) => (
-            <div key={idx} className="mb-6">
-              {isOpen && (
-                <h3 className="text-xs font-semibold text-slate-500 px-4 mb-2">
-                  {section.category}
-                </h3>
-              )}
-              <div className="space-y-1">
-                {section.items.map((item) => (
-                  <NavItem
-                    key={item.path}
-                    item={item}
-                    isOpen={isOpen}
-                    isActive={pathname === item.path}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
-
-      {/* Mobile Sidebar */}
-      <div className="lg:hidden sticky left-0 top-0 h-screen w-[80px] bg-[#0A0F1C] border-r border-slate-800">
-        <div className="p-4 border-b border-slate-800">
-          <div className="flex justify-center">
-            <span className="text-xl font-bold text-white">P</span>
-          </div>
-        </div>
-
-        <div className="overflow-y-auto px-2 py-4">
-          {mainNavItems.map((section) => (
-            <div key={section.category} className="mb-6">
-              <div className="space-y-1">
-                {section.items.map((item) => (
-                  <NavItem
-                    key={item.path}
-                    item={item}
-                    isOpen={false}
-                    isMobile={true}
-                    isActive={pathname === item.path}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+          )}
         </div>
       </div>
-    </>
+
+      {/* Navigation */}
+      <div className="flex-1 overflow-y-auto px-3 py-4">
+        {mainNavItems.map((section, idx) => (
+          <div key={idx} className="mb-6">
+            {!isCollapsed && (
+              <h3 className="text-xs font-semibold text-slate-500 px-4 mb-2">
+                {section.category}
+              </h3>
+            )}
+            <div className="space-y-1">
+              {section.items.map((item) => (
+                <NavItem
+                  key={item.path}
+                  item={item}
+                  isCollapsed={isCollapsed}
+                  isActive={pathname === item.path}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Toggle Button - Only show on desktop */}
+      {!isMobile && (
+        <button
+          onClick={onCollapse}
+          className="absolute right-[-12px] top-4 bg-slate-800 rounded-full p-2
+            hover:bg-blue-500 hover:text-white
+            transition-all duration-300 border border-slate-700/50 shadow-lg"
+        >
+          {!isCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+        </button>
+      )}
+    </div>
   );
 }

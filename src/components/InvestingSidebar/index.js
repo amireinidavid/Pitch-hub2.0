@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -106,12 +106,10 @@ const investorNavItems = [
   },
 ];
 
-export default function InvestingSidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+export default function InvestingSidebar({ isMobile, isCollapsed, onCollapse }) {
   const [expandedItems, setExpandedItems] = useState({});
   const pathname = usePathname();
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
   const toggleExpand = (path) => {
     setExpandedItems((prev) => ({
       ...prev,
@@ -120,31 +118,23 @@ export default function InvestingSidebar() {
   };
 
   return (
-    <motion.div
-      initial={false}
-      animate={{
-        width: isOpen ? "280px" : "80px",
-      }}
-      className={`
-        sticky top-[64px] left-0 h-[calc(100vh-64px)]
-        bg-gradient-to-b from-slate-900 to-slate-800
-        text-white flex flex-col border-r border-slate-700/50
-        transition-all duration-300 ease-in-out z-50
-      `}
-    >
+    <div className={`
+      h-full bg-gradient-to-b from-slate-900 to-slate-800
+      text-white flex flex-col border-r border-slate-700/50
+      transition-all duration-300 ease-in-out
+      ${isMobile ? 'w-full' : isCollapsed ? 'w-20' : 'w-64'}
+    `}>
       {/* Quick Actions */}
       <div className="p-4 border-b border-slate-700/50">
         <Link href="/investing/opportunities">
-          <button
-            className={`
+          <button className={`
             w-full h-12 rounded-xl
             bg-gradient-to-r from-emerald-500 to-teal-500
             hover:from-emerald-600 hover:to-teal-600
             transition-all duration-300 flex items-center justify-center gap-2
             font-medium shadow-lg hover:shadow-emerald-500/20
-          `}
-          >
-            {isOpen ? (
+          `}>
+            {!isCollapsed ? (
               <>
                 <FaSearch className="w-4 h-4" />
                 <span>Discover Opportunities</span>
@@ -161,7 +151,7 @@ export default function InvestingSidebar() {
         <div className="p-4 space-y-6">
           {investorNavItems.map((section, idx) => (
             <div key={idx}>
-              {isOpen && (
+              {!isCollapsed && (
                 <h3 className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wider">
                   {section.category}
                 </h3>
@@ -174,44 +164,37 @@ export default function InvestingSidebar() {
                       className={`
                         group flex items-center gap-2 p-2 rounded-xl
                         transition-all duration-200
-                        ${
-                          pathname === item.path
-                            ? `bg-gradient-to-r ${item.gradient} bg-opacity-10`
-                            : "hover:bg-slate-700/30"
+                        ${pathname === item.path
+                          ? `bg-gradient-to-r ${item.gradient} bg-opacity-10`
+                          : "hover:bg-slate-700/30"
                         }
                       `}
                       onClick={() => item.subItems && toggleExpand(item.path)}
                     >
-                      <div
-                        className={`
+                      <div className={`
                         w-10 h-10 rounded-lg flex items-center justify-center
                         bg-gradient-to-r ${item.gradient}
                         transition-all duration-300 group-hover:scale-110
-                      `}
-                      >
+                      `}>
                         <item.icon className="w-5 h-5" />
                       </div>
 
-                      {isOpen && (
+                      {!isCollapsed && (
                         <div className="flex-1 flex items-center justify-between">
                           <span className="font-medium">{item.text}</span>
                           {item.badge && (
-                            <span
-                              className={`
+                            <span className={`
                               px-2 py-1 text-xs rounded-full
                               bg-gradient-to-r ${item.gradient}
-                            `}
-                            >
+                            `}>
                               {item.badge}
                             </span>
                           )}
                           {item.subItems && (
-                            <FaCaretDown
-                              className={`
+                            <FaCaretDown className={`
                               transform transition-transform duration-200
                               ${expandedItems[item.path] ? "rotate-180" : ""}
-                            `}
-                            />
+                            `} />
                           )}
                         </div>
                       )}
@@ -219,7 +202,7 @@ export default function InvestingSidebar() {
 
                     {/* SubItems */}
                     <AnimatePresence>
-                      {isOpen && item.subItems && expandedItems[item.path] && (
+                      {!isCollapsed && item.subItems && expandedItems[item.path] && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}
@@ -232,10 +215,9 @@ export default function InvestingSidebar() {
                               href={subItem.path}
                               className={`
                                 block py-2 px-3 rounded-lg text-sm
-                                ${
-                                  pathname === subItem.path
-                                    ? "text-white bg-slate-700/30"
-                                    : "text-slate-400 hover:text-white hover:bg-slate-700/20"
+                                ${pathname === subItem.path
+                                  ? "text-white bg-slate-700/30"
+                                  : "text-slate-400 hover:text-white hover:bg-slate-700/20"
                                 }
                                 transition-all duration-200
                               `}
@@ -263,7 +245,7 @@ export default function InvestingSidebar() {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-slate-500 to-slate-600 flex items-center justify-center">
             <FaCog className="w-5 h-5" />
           </div>
-          {isOpen && (
+          {!isCollapsed && (
             <div>
               <div className="font-medium">Settings</div>
               <div className="text-xs text-slate-400">
@@ -274,15 +256,17 @@ export default function InvestingSidebar() {
         </Link>
       </div>
 
-      {/* Toggle Button */}
-      <button
-        onClick={toggleSidebar}
-        className="absolute right-[-12px] top-4 bg-slate-800 rounded-full p-2
-          hover:bg-emerald-500 hover:text-white
-          transition-all duration-300 border border-slate-700/50 shadow-lg"
-      >
-        {isOpen ? <FaChevronLeft size={14} /> : <FaChevronRight size={14} />}
-      </button>
-    </motion.div>
+      {/* Toggle Button - Only show on desktop */}
+      {!isMobile && (
+        <button
+          onClick={onCollapse}
+          className="absolute right-[-12px] top-4 bg-slate-800 rounded-full p-2
+            hover:bg-emerald-500 hover:text-white
+            transition-all duration-300 border border-slate-700/50 shadow-lg"
+        >
+          {!isCollapsed ? <FaChevronLeft size={14} /> : <FaChevronRight size={14} />}
+        </button>
+      )}
+    </div>
   );
 }
