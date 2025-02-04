@@ -184,7 +184,7 @@ console.log(data?.pitches?.industry, "data");
     <div className="min-h-screen bg-[#0f172a]">
       {/* Welcome Header - Full Width */}
  {/* Modern Glass-morphic Header */}
- <div className="backdrop-blur-md bg-[#1e293b]/30 border-b border-white/5 sticky top-0 z-50">
+ {/* <div className="backdrop-blur-md bg-[#1e293b]/30 border-b border-white/5 sticky top-0 z-50">
         <div className="px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -229,7 +229,7 @@ console.log(data?.pitches?.industry, "data");
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       <div className="p-8 space-y-6">
         {/* Stats Grid */}

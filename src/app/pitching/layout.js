@@ -8,7 +8,10 @@ export default function PitchLayout({ children }) {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Auto collapse on mobile, stay expanded on desktop
+      setIsCollapsed(mobile);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -17,27 +20,34 @@ export default function PitchLayout({ children }) {
 
   return (
     <div className="flex min-h-screen bg-[#0f172a]">
+      {/* Sidebar - Always visible on desktop, collapsible on mobile */}
       <div className={`
         fixed top-0 bottom-0 z-30
-        ${isMobile ? (isCollapsed ? '-translate-x-full' : 'translate-x-0') : ''}
-        transition-transform duration-300
-        w-20 lg:w-64 bg-[#1e293b]
+        ${isMobile ? 'w-[80px]' : 'w-64'}
+        ${isMobile && isCollapsed ? '-translate-x-full' : 'translate-x-0'}
+        transition-all duration-300
+        bg-[#1e293b]
       `}>
         <PitchingSidebar 
           isMobile={isMobile}
-          isCollapsed={isCollapsed}
-          onCollapse={() => setIsCollapsed(!isCollapsed)}
+          isCollapsed={isMobile}
+          onCollapse={() => isMobile && setIsCollapsed(!isCollapsed)}
         />
       </div>
+
+      {/* Main Content */}
       <div className={`
-        flex-1 
-        ${isMobile ? 'ml-0' : 'ml-20 lg:ml-64'}
+        flex-1
+        ${isMobile ? 'ml-[80px]' : 'ml-64'}
+        ${isMobile && isCollapsed ? 'ml-0' : ''}
         transition-all duration-300
       `}>
         <main className="p-4 md:p-6 lg:p-8">
           {children}
         </main>
       </div>
+
+      {/* Mobile Overlay */}
       {isMobile && !isCollapsed && (
         <div 
           className="fixed inset-0 bg-black/50 z-20"
